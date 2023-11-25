@@ -1,92 +1,122 @@
 # ASP_worksheet2
 
+## Task 1
 
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.uwe.ac.uk/b25-phillips/asp_worksheet2.git
-git branch -M main
-git push -uf origin main
+For this task I implemented a bump allocation class. You can find this class in the 'bump_allocator.hpp' file. The class has four variables; memory which is a pointer to the start of the block of memory that is defined, allocator_size which defines the size of memory that can be used, offset which is the point that shows how far the allocated memory has reached, and count which is the number of current memory allocations.
+```c++
+char *memory;
+size_t allocator_size;
+size_t offset;
+int count;
 ```
 
-## Integrate with your tools
+<br/>
 
-- [ ] [Set up project integrations](https://gitlab.uwe.ac.uk/b25-phillips/asp_worksheet2/-/settings/integrations)
+The class also has a constructor that requires a parameter and two template functions; alloc and dealloc.
 
-## Collaborate with your team
+The constructor will create a new block of memory of size s and set the offset and count to 0.
+```c++
+bump_allocator(size_t s)
+{
+    allocator_size = s;
+    memory = new char[allocator_size];
+    offset = 0;
+    count = 0;
+}
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+<br/>
 
-## Test and Deploy
+The alloc function will take a number of arguments of any given type and attempt to allocate the memory for them and return a pointer to the memory. It will first find the total size needed for the allocation by multiplying the number of arguments by the size of the type.
+```c++
+size_t size = args * sizeof(T);
+```
 
-Use the built-in continuous integration in GitLab.
+Then it will work out if any alignment is needed and will pad accordingly. This will happen for example if you first allocated a char, which is 1 byte, and then allocated an int, which is 4 bytes. Instead of just adding them for a total of 5 bytes, the space after the char will first be padded by 3 bytes and the int will be placed after that, totaling 8 bytes. This is to optimise the speed of accessing the memory so seperate memory blocks do not have to be accessed for one fetch.
+```c++
+// check alignment
+size_t align = 0;
+if (!(offset % alignof(T) == 0)) {
+    align = (alignof(T) - (offset % alignof(T)));
+}
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+After that it will check if there is enough space left in the allocator to allocate the memory that is needed using the offset, the padding amount and the total size of the requested allocation. If there is not enough space available then a null pointer will be returned.
+```c++
+// if there is not enough space left then return nullptr
+if ((offset + align + size) > allocator_size) {
+    cout << "Not enough memory" << endl;
+    return nullptr;
+}
+```
 
-***
+If there is enough memory that means the allocation can proceed and a new pointer will be created for the type at the next space in the allocators memory. The count will be incremented and the offset will be increased accordingly. Finally the pointer to the allocated memory will be returned.
+```c++
+// make new pointer at the next space and return
+T *mem = (T*)(memory + offset + align);
+offset += align + size; // move offset up
+count++;
+return mem;
+```
 
-# Editing this README
+<br/>
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+The dealloc function will take a pointer of any type and decrement the count variable. If the count reaches 0 then there should be no more allocations being used so the offset can be reset and the allocator can be used from the start of the memory block again. I have also added an assert function to ensure the count cannot go below 0 as this would cause unexpected behaviour and issues.
+```c++
+template <class T>
+void dealloc(T *ptr)
+{
+    assert(count > 0);
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+    count--;
+    
+    // if all allocations have been deallocated then reset the heap to the start
+    if (count == 0) {
+        offset = 0;
+        cout << "Allocator reset" << endl;
+    }
+}
+```
 
-## Name
-Choose a self-explaining name for your project.
+<br/>
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+I have wrote some code to test this class. You can find this in the 'test_bump.cpp' file.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Here I initialise the bump allocator with 32 bytes of memory. Then I call my alloc function using some different types; char, int and double and assigning values to them. The total amount of bytes I allocate add up to 32 which is the size of memory for the allocator.
+```c++
+int bump_allocator_size = 32;
+bump_allocator bump(bump_allocator_size);
+cout << "bump allocator size is " << bump_allocator_size << " bytes" << endl;
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+int cCount = 4;
+char *pChar = bump.alloc<char>(cCount);
+for (int i = 0; i < cCount; i++) {
+    *(pChar + i) = 'a' + i;
+    cout << *(pChar + i) << " ";
+}
+cout << endl;
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+int iCount = 5;
+int *pInt = bump.alloc<int>(iCount);
+for (int i = 0; i < iCount; i++) {
+    *(pInt + i) = i + 1;
+    cout << *(pInt + i) << " ";
+}
+cout << endl;
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+double *pDouble = bump.alloc<double>(1);
+*pDouble = 4.01574;
+cout << *pDouble << endl;
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Here you can see the output of it running.
+![Output showing examples of the bump allocator using different types](images/task1_output1.png)
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+If I change the cCount variable from 4 to 5 then that will increase the amount of chars allocated by one and when the double is allocated it should return a null pointer as there will not be enough memory available.
+```c++
+int cCount = 5;
+```
+![Output showing example of a failed allocation due to not having enough memory](images/task1_output2.png)
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+To allow enough memory for the program to succeed the allocator memory size must be at least 40 bytes. This is because adding the extra char would add a byte, then when the integers are allocated it will be padded by 3 bytes. Then when the double is allocated it will be padded for 4 bytes. You can see the output with 40 bytes is successful.
+![Output showing bytes needed for succesful allocation of originally failed ones](images/task1_output4.png)
