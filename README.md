@@ -88,6 +88,7 @@ int bump_allocator_size = 32;
 bump_allocator bump(bump_allocator_size);
 cout << "bump allocator size is " << bump_allocator_size << " bytes" << endl;
 
+// allocate memory using bump allocator
 int cCount = 4;
 char *pChar = bump.alloc<char>(cCount);
 for (int i = 0; i < cCount; i++) {
@@ -110,7 +111,9 @@ cout << *pDouble << endl;
 ```
 
 Here you can see the output of it running.
+
 ![Output showing examples of the bump allocator using different types](images/task1_output1.png)
+
 
 If I change the cCount variable from 4 to 5 then that will increase the amount of chars allocated by one and when the double is allocated it should return a null pointer as there will not be enough memory available.
 ```c++
@@ -118,5 +121,75 @@ int cCount = 5;
 ```
 ![Output showing example of a failed allocation due to not having enough memory](images/task1_output2.png)
 
-To allow enough memory for the program to succeed the allocator memory size must be at least 40 bytes. This is because adding the extra char would add a byte, then when the integers are allocated it will be padded by 3 bytes. Then when the double is allocated it will be padded for 4 bytes. You can see the output with 40 bytes is successful.
+
+To allow enough memory for the program to succeed the allocator memory size must be at least 40 bytes. This is because adding the extra char would add a byte, then when the integers are allocated it will be padded by 3 bytes bringing it up to 28. Then when the double is allocated it will be padded by 4 bytes bringing the total to 40. You can see the output with 40 bytes is successful.
+
 ![Output showing bytes needed for succesful allocation of originally failed ones](images/task1_output4.png)
+
+<br/>
+
+I have extended the code in the 'test_bump.cpp' file to test the dealloc function and that the allocator resets when all allocations have been deallocated.
+
+The allocator should only allow for allocations on the end of the memory and only move upwards. So deallocating the char pointer and creating another should not work. First I added the code below onto the existing program and tested this.
+```c++
+// deallocate memory using bump allocator
+bump.dealloc(pChar);
+char *c = bump.alloc<char>(1);
+*c = 'a';
+cout << *c << endl;
+```
+
+The output was as expected and didn't allow the allocation due to not enough memory.
+
+![Output of char deallocation and reallocation failing](images/task1_output5.png)
+
+
+Then I checked that the memory would reset if all allocations were deallocated. 
+
+I deallocated the original three pointers and used my alloc function to create others.
+```c++
+// deallocate memory
+bump.dealloc(pChar);
+
+bump.dealloc(pInt);
+
+bump.dealloc(pDouble);
+
+
+// allocate memory
+int dCount = 4;
+double *d = bump.alloc<double>(dCount);
+for (int i = 0; i < dCount; i++) {
+    *(d + i) = 3.1567 * (i + 1);
+    cout << *(d + i) << " ";
+}
+cout << endl;
+
+cCount = 8;
+char *c = bump.alloc<char>(cCount);
+for (int i = 0; i < cCount; i++) {
+    *(c + i) = 'z' - i;
+    cout << *(c + i) << " ";
+}
+cout << endl;
+```
+
+The allocator successfully reset and allowed new allocations.
+
+![Ouput of deallocation to reset bump allocator and allocate new memory](images/task1_output6.png)
+
+
+## Task 2
+
+
+
+
+
+
+
+
+
+
+
+
+## Task 3
