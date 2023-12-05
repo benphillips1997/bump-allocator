@@ -35,10 +35,8 @@ size_t size = args * sizeof(T);
 Then it will work out if any alignment is needed and will pad accordingly. This will happen for example if you first allocated a char, which is 1 byte, and then allocated an int, which is 4 bytes. Instead of just adding them for a total of 5 bytes, the space after the char will first be padded by 3 bytes and the int will be placed after that, totaling 8 bytes. This is to optimise the speed of accessing the memory so seperate memory blocks do not have to be accessed for one fetch.
 ```c++
 // check alignment
-size_t align = 0;
-if (!(offset % alignof(T) == 0)) {
-    align = (alignof(T) - (offset % alignof(T)));
-}
+size_t tAlign = alignof(T);
+size_t align = (tAlign - (offset & (tAlign - 1))) & (tAlign - 1);
 ```
 
 After that it will check if there is enough space left in the allocator to allocate the memory that is needed using the offset, the padding amount and the total size of the requested allocation. If there is not enough space available then a null pointer will be returned.
@@ -178,6 +176,7 @@ The allocator successfully reset and allowed new allocations.
 
 ![Ouput of deallocation to reset bump allocator and allocate new memory](images/task1_output6.png)
 
+<br/>
 
 ## Task 2
 
@@ -280,5 +279,104 @@ If you compile and run the 'unit_tests.cpp' file with the 'simpletest.cpp' file 
 
 ![Output of unit tests](images/task2_unit_test_output.png)
 
+<br/>
 
 ## Task 3
+
+For this task I implemented another bump allocator that bumps down instead of up. The bump up allocator is still in the file 'bump_allocator.hpp' and my bump down allocator is in 'bump_down_allocator.hpp'. The difference is that when bumping down, you begin at the end of your memory and the offset is moved down by the allocation amount, then you check that you have not gone past the bottom of your memory and if not then you allocate the pointer. Bumping down should be quicker than bumping up.
+
+This is how I allocated the memory with my first allocator, bumping up.
+```c++
+// if there is not enough space left then return nullptr
+if ((offset + align + size) > allocator_size) {
+	// cout << "Not enough memory" << endl;
+	return nullptr;
+}
+
+// make new pointer at the next space and return
+T *mem = (T*)(memory + offset + align);
+offset += align + size; // move offset up
+count++;
+// cout << "Offset after: " << offset << endl;
+return mem;
+```
+
+And this is it bumping down.
+```c++
+// increase offset
+offset += align + size;
+
+// if not enough memory return nullptr and revert offset
+if (offset > allocator_size) {
+	offset -= align - size;
+	return nullptr;
+}
+
+// make new pointer at the next space
+T *mem = (T*)(end - offset);
+count++;
+// cout << "Offset after: " << offset << endl;
+return mem;
+```
+
+<br/>
+
+Then I created a benchmark class to test the speed of each allocator. You can find this class in the 'benchmark.hpp' file. It has a function that takes a function(void) at times it. It also has an overload function that is able to take a function with multiple arguments.
+```c++
+// times a function with arguments
+template <class T, class... Args>
+void time_function(T func, Args... args)
+{
+	// time passed function
+	auto start = high_resolution_clock::now();
+
+	// call funcion with multiple arguments
+	forward<T>(func)(forward<Args>(args)...);
+
+	auto stop = high_resolution_clock::now();
+
+	duration<double, milli> time = stop - start;
+	cout << time.count() << "ms" << endl;
+}
+```
+
+<br/>
+
+I tested the two allocators in the file 'bench_test.cpp'. I created two functions to pass into my benchmark which you can find in the file. One for the bump up allocator, and one for the bump down allocator. They both do the same allocations with some different types.
+
+Then I passed these functions into my benchmark for a number of iterations.
+```c++
+benchmark bench;
+
+int iterations = 100000000;
+cout << "Number of iterations: " << iterations << endl;
+cout << "Bump up: ";
+bench.time_function(bump_up_test, iterations);
+cout << "Bump down: ";
+bench.time_function(bump_down_test, iterations);
+```
+
+<br/>
+
+I used -O3 optimisation when compiling my program and ran both functions through my benchmark. At first it was extremely fast due to the optimisation.
+
+![Output of allocators benchmark](images/task3_output1.png)
+
+<br/>
+
+To better be able to measure the performance, I added the keyword 'volatile' to some of the variables in the allocators.
+```c++
+volatile size_t size = args * sizeof(T);
+
+// check alignment
+volatile size_t tAlign = alignof(T);
+volatile size_t align = (tAlign - (offset & (tAlign - 1))) & (tAlign - 1);
+```
+
+After doing this I got a better reading. This was the output.
+
+![Output of allocators benchmark with volatile keyword](images/task3_output2.png)
+
+<br/>
+
+The bump down allocator was noticably quicker which was the expected result.

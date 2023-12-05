@@ -6,20 +6,22 @@
 using namespace std;
 
 
-class bump_allocator
+class bump_down_allocator
 {
 private:
     char *memory;
+    char *end;
     size_t allocator_size;
     size_t offset;
     int count;
 public:
-    bump_allocator() = delete;
+    bump_down_allocator() = delete;
 
-    bump_allocator(size_t s)
+    bump_down_allocator(size_t s)
     {
         allocator_size = s;
         memory = new char[allocator_size];
+        end = memory + allocator_size;
         offset = 0;
         count = 0;
     }
@@ -37,15 +39,17 @@ public:
 
         // cout << "Align: " << align << endl;
 
-        // if there is not enough space left then return nullptr
-        if ((offset + align + size) > allocator_size) {
-            // cout << "Not enough memory" << endl;
+        // increase offset
+        offset += align + size;
+
+        // if not enough memory return nullptr and revert offset
+        if (offset > allocator_size) {
+            offset -= align - size;
             return nullptr;
         }
 
-        // make new pointer at the next space and return
-        T *mem = (T*)(memory + offset + align);
-        offset += align + size; // move offset up
+        // make new pointer at the next space
+        T *mem = (T*)(end - offset);
         count++;
         // cout << "Offset after: " << offset << endl;
         return mem;
@@ -54,7 +58,7 @@ public:
     template <class T>
     void dealloc(T *ptr)
     {
-        // assert(count > 0);
+        //assert(count > 0);
 
         // cout << "Deallocate called" << endl;
         count--;
