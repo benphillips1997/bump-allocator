@@ -1,4 +1,4 @@
-# ASP_worksheet2
+# Worksheet 2
 
 ## Task 1
 
@@ -122,7 +122,7 @@ int cCount = 5;
 ![Output showing example of a failed allocation due to not having enough memory](images/task1_output2.png)
 
 
-To allow enough memory for the program to succeed the allocator memory size must be at least 40 bytes. This is because adding the extra char would add a byte, then when the integers are allocated it will be padded by 3 bytes bringing it up to 28. Then when the double is allocated it will be padded by 4 bytes bringing the total to 40. You can see the output with 40 bytes is successful.
+To allow enough memory for the program to succeed the allocator memory size must be at least 40 bytes. This is because adding the extra char would add a byte, then when the integers are allocated it will be padded by 3 bytes, plus the 5 ints, bringing it up to 28. Then when the double is allocated it will be padded by 4 bytes bringing the total to 40. You can see the output with 40 bytes is successful.
 
 ![Output showing bytes needed for succesful allocation of originally failed ones](images/task1_output4.png)
 
@@ -181,15 +181,104 @@ The allocator successfully reset and allowed new allocations.
 
 ## Task 2
 
+For task 2 I wrote unit tests using the simpletest module. You can find the unit tests in the 'unit_tests.cpp' file. 
 
+In total I wrote 12 unit test groups which each had multiple tests inside to make sure each step worked correctly. These tests checked that different parts of my bump_allocator class worked correctly.
+```c++
+char const *groups[] = {
+    "simple",
+	"struct",
+	"exceedMemory",
+	"failThenPass",
+	"padding",
+	"deallocReset",
+	"deallocReset2",
+	"deallocAllocUp",
+	"onlyBumpUp",
+	"onlyBumpUp2",
+	"assignValues",
+	"reassignValues",
+};
+```
 
+<br/>
 
+For example this was one of the tests. This checked that a null pointer is returned when the memory is full. So x will not be a nullptr as it fills the available memory but does not go over. Then c will be a nullptr as it goes over the available memory.
+```c++
+// check that nullptr is returned when memory is full
+DEFINE_TEST_G(SimpleTest, simple)
+{
+    bump_allocator bump(20);
 
+	// should fill memory
+    int *x = bump.alloc<int>(5);
+	TEST_MESSAGE(x != nullptr, "Should have successfully allocated");
 
+	// should fail and return nullptr
+	char *c = bump.alloc<char>(1);
+	TEST_MESSAGE(c == nullptr, "Should have failed to allocate");
+}
+```
 
+<br/>
 
+The other unit tests I have written test some different types. Then I wrote some that checked that checked that the alignment works correctly and that the padding is right. Below is one of my tests that checks for correct padding.
+```c++
+// check different types all pad correctly
+DEFINE_TEST_G(PaddingTest, padding)
+{
+	bump_allocator bump(48);
 
+	int *i = bump.alloc<int>(1); // 4 bytes
+	TEST_MESSAGE(i != nullptr, "Should have successfully allocated");
 
+	double *d = bump.alloc<double>(1); // with padding total to 16 bytes
+	TEST_MESSAGE(d != nullptr, "Should have successfully allocated");
+
+	char *c = bump.alloc<char>(1); // total to 17 bytes
+	TEST_MESSAGE(c != nullptr, "Should have successfully allocated");
+
+	struct my_struct {
+		char c;
+		int x;
+		int y;
+		int z;
+	};
+	my_struct *myStruct = bump.alloc<my_struct>(1); // with padding total to 36 bytes
+	TEST_MESSAGE(myStruct != nullptr, "Should have successfully allocated");
+
+	double *e = bump.alloc<double>(1); // with padding should total 48 bytes;
+	TEST_MESSAGE(e != nullptr, "Should have successfully allocated");
+
+	char *s = bump.alloc<char>(1); // should go over the memory limit if padding was correct
+	TEST_MESSAGE(s == nullptr, "Should have failed to allocate");
+}
+```
+
+<br/>
+
+Then I wrote some to check that deallocing works and that after the allocation count reaches 0, the allocator resets and the allocator memory is available to allocate again.
+```c++
+// check allocator resets when allocation count is 0
+DEFINE_TEST_G(DeallocResetTest, deallocReset)
+{
+	bump_allocator bump(sizeof(int) * 4);
+
+	int *x = bump.alloc<int>(4);
+	TEST_MESSAGE(x != nullptr, "Should have successfully allocated");
+
+	bump.dealloc(x);
+
+	int *y = bump.alloc<int>(4);
+	TEST_MESSAGE(y != nullptr, "Should have successfully allocated");
+}
+```
+
+<br/>
+
+If you compile and run the 'unit_tests.cpp' file with the 'simpletest.cpp' file you should see that the tests passed. Here is the ouput.
+
+![Output of unit tests](images/task2_unit_test_output.png)
 
 
 ## Task 3
