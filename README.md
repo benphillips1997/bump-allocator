@@ -373,9 +373,11 @@ volatile size_t tAlign = alignof(T);
 volatile size_t align = (tAlign - (offset & (tAlign - 1))) & (tAlign - 1);
 ```
 
+<br/>
+
 After doing this I got a better reading. This was the output.
 
-![Output of allocators benchmark with volatile keyword](images/task3_output2.png)
+![Output of allocators benchmark with volatile keyword](images/task3_ouput2.png)
 
 <br/>
 
