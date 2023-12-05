@@ -207,10 +207,10 @@ For example this was one of the tests. This checked that a null pointer is retur
 // check that nullptr is returned when memory is full
 DEFINE_TEST_G(SimpleTest, simple)
 {
-    bump_allocator bump(20);
+	bump_allocator bump(20);
 
 	// should fill memory
-    int *x = bump.alloc<int>(5);
+	int *x = bump.alloc<int>(5);
 	TEST_MESSAGE(x != nullptr, "Should have successfully allocated");
 
 	// should fail and return nullptr
@@ -283,7 +283,7 @@ If you compile and run the 'unit_tests.cpp' file with the 'simpletest.cpp' file 
 
 ## Task 3
 
-For this task I implemented another bump allocator that bumps down instead of up. The bump up allocator is still in the file 'bump_allocator.hpp' and my bump down allocator is in 'bump_down_allocator.hpp'. The difference is that when bumping down, you begin at the end of your memory and the offset is moved down by the allocation amount, then you check that you have not gone past the bottom of your memory and if not then you allocate the pointer. Bumping down should be quicker than bumping up.
+For this task I implemented another bump allocator that bumps down instead of up. The bump up allocator is still in the file 'bump_allocator.hpp' and my bump down allocator is in 'bump_down_allocator.hpp'. The difference is that when bumping down, you begin at the end of your memory and the offset is moved down by the allocation amount, then you check that you have not gone past the bottom of your memory and if not then you allocate the space. Bumping down should be quicker than bumping up.
 
 This is how I allocated the memory with my first allocator, bumping up.
 ```c++
@@ -321,7 +321,7 @@ return mem;
 
 <br/>
 
-Then I created a benchmark class to test the speed of each allocator. You can find this class in the 'benchmark.hpp' file. It has a function that takes a function(void) at times it. It also has an overload function that is able to take a function with multiple arguments.
+Then I created a benchmark class to test the speed of each allocator using the chrono library. You can find this class in the 'benchmark.hpp' file. It has a function that takes a function(void) and times it. It also has an overload function that is able to take a function with multiple arguments.
 ```c++
 // times a function with arguments
 template <class T, class... Args>
@@ -342,7 +342,7 @@ void time_function(T func, Args... args)
 
 <br/>
 
-I tested the two allocators in the file 'bench_test.cpp'. I created two functions to pass into my benchmark which you can find in the file. One for the bump up allocator, and one for the bump down allocator. They both do the same allocations with some different types.
+I tested the speed of my two allocators in the file 'bench_test.cpp'. I created two functions to pass into my benchmark which you can find in the file. One for the bump up allocator, and one for the bump down allocator. They both do the same allocations with some different types.
 
 Then I passed these functions into my benchmark for a number of iterations.
 ```c++
@@ -377,7 +377,7 @@ volatile size_t align = (tAlign - (offset & (tAlign - 1))) & (tAlign - 1);
 
 After doing this I got a better reading. This was the output.
 
-![Output of allocators benchmark with volatile keyword](images/task3_ouput2.png)
+![Output of allocators benchmark with volatile keyword](images/task3_output2.png)
 
 <br/>
 
